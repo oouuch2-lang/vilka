@@ -1,0 +1,219 @@
+<title>Вилка ₽ ⇄ $</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: one narrow column — rate & mode on top, two bookmaker slips side by side, two outcome rows below */
+:root {
+  --bg: #eef1f4; --card: #ffffff; --fg: #17202b; --muted: #637083; --line: #d5dbe3;
+  --rub: #2f5fb3; --usd: #2b8a5a; --good: #1f8a4c; --bad: #c2412d; --hl: #fff6d6;
+  --sans: "Golos Text", system-ui, sans-serif; --mono: "JetBrains Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #11161d; --card: #1a212b; --fg: #e6ebf1; --muted: #8b97a8; --line: #2c3644;
+  --rub: #7aa2ec; --usd: #5fc893; --good: #5fc893; --bad: #f07f6c; --hl: #2e2a17; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #11161d; --card: #1a212b; --fg: #e6ebf1; --muted: #8b97a8; --line: #2c3644;
+  --rub: #7aa2ec; --usd: #5fc893; --good: #5fc893; --bad: #f07f6c; --hl: #2e2a17; color-scheme: dark }
+
+body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 15px; }
+main { max-width: 560px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 40px; display: grid; gap: 14px; }
+h1 { margin: 0; font-size: 22px; font-weight: 700; }
+.sub { color: var(--muted); font-size: 13px; margin: 2px 0 0; }
+label, .lbl { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
+input, select { font: inherit; color: var(--fg); background: var(--card); border: 1.5px solid var(--line); border-radius: 8px; width: 100%; box-sizing: border-box; }
+input { font-family: var(--mono); font-size: 22px; font-weight: 700; padding: 8px 10px; }
+select { padding: 4px 6px; font-size: 16px; width: auto; }
+input:focus, select:focus, button:focus-visible { outline: 2px solid var(--rub); outline-offset: 1px; border-color: transparent; }
+.field { display: grid; gap: 4px; }
+
+.top { display: grid; grid-template-columns: 1fr 1.6fr; gap: 12px; align-items: end; }
+.seg { display: flex; border: 1.5px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--card); }
+.seg button { flex: 1; font: inherit; font-size: 13px; font-weight: 600; padding: 12px 4px; border: 0; background: none; color: var(--muted); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+
+.books { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.book { background: var(--card); border-radius: 12px; padding: 12px; display: grid; gap: 10px; border-top: 4px solid var(--c); min-width: 0; }
+.book h2 { margin: 0; font-size: 15px; color: var(--c); display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+.rub { --c: var(--rub); } .usd { --c: var(--usd); }
+.stakeRow { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+.auto { font-size: 11px; color: var(--c); font-weight: 600; text-transform: none; letter-spacing: 0; }
+
+.verdict { padding: 12px 14px; border-radius: 12px; background: var(--card); display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.verdict b { font-family: var(--mono); font-size: 20px; }
+.pos { color: var(--good); } .neg { color: var(--bad); }
+
+.scen { background: var(--card); border-radius: 12px; padding: 12px 14px; display: grid; gap: 8px; border: 2px solid transparent; }
+.scen.want { border-color: var(--good); }
+.scen.back { opacity: .8; }
+.scen h3 { margin: 0; font-size: 15px; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.tag { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: var(--bg); color: var(--muted); }
+.scen.want .tag { background: var(--good); color: var(--card); }
+.rows { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; font-size: 14px; }
+.rows span:nth-child(even) { font-family: var(--mono); font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.rows .tot { border-top: 1px solid var(--line); padding-top: 6px; font-weight: 600; }
+.hint { font-size: 13px; color: var(--muted); line-height: 1.5; margin: 0; }
+.hint strong { color: var(--fg); }
+.err { color: var(--bad); font-size: 14px; }
+
+@media (max-width: 420px) { .top { grid-template-columns: 1fr; } input { font-size: 20px; } }
+</style>
+
+<main>
+  <header>
+    <h1>Вилка ₽ ⇄ $</h1>
+    <p class="sub">Переброс денег между рублёвой и долларовой конторой</p>
+  </header>
+
+  <div class="top">
+    <div class="field">
+      <label for="rate">Курс, ₽ за $</label>
+      <input id="rate" inputmode="decimal" value="82">
+    </div>
+    <div class="field">
+      <span class="lbl">Что делаем</span>
+      <div class="seg" id="mode">
+        <button data-m="r2u">₽ → $</button>
+        <button data-m="u2r">$ → ₽</button>
+        <button data-m="arb">Просто вилка</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="books">
+    <section class="book rub">
+      <h2>Рублёвая</h2>
+      <div class="field"><label for="kR">Коэффициент</label><input id="kR" inputmode="decimal" value="2.45"></div>
+      <div class="field">
+        <div class="stakeRow"><label for="sR">Ставка, ₽</label><span class="auto" id="aR"></span></div>
+        <input id="sR" inputmode="decimal" value="10000">
+      </div>
+      <div class="stakeRow"><span class="lbl">Округлять до</span>
+        <select id="stR"><option>1</option><option selected>10</option><option>50</option><option>100</option></select></div>
+    </section>
+    <section class="book usd">
+      <h2>Долларовая</h2>
+      <div class="field"><label for="kU">Коэффициент</label><input id="kU" inputmode="decimal" value="1.65"></div>
+      <div class="field">
+        <div class="stakeRow"><label for="sU">Ставка, $</label><span class="auto" id="aU"></span></div>
+        <input id="sU" inputmode="decimal">
+      </div>
+      <div class="stakeRow"><span class="lbl">Округлять до</span>
+        <select id="stU"><option>0.01</option><option selected>1</option><option>5</option><option>10</option></select></div>
+    </section>
+  </div>
+
+  <div id="out"><p class="err">Калькулятор не запустился: этот просмотрщик не умеет считать. На айфоне открой калькулятор по ссылке в Safari или в приложении Claude, а не как файл из Telegram или «Файлов».</p></div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const num = id => parseFloat(($(id).value || '').replace(/\s/g, '').replace(',', '.'));
+const roundTo = (x, step) => Math.round(x / step) * step;
+const fmt = (x, d = 0) => x.toLocaleString('ru-RU', { minimumFractionDigits: d, maximumFractionDigits: d });
+const sign = (x, d = 0) => (x > 0 ? '+' : x < 0 ? '−' : '') + fmt(Math.abs(x), d);
+const cls = x => x >= 0 ? 'pos' : 'neg';
+
+// Pure math: stakes in their own currency, rate = ₽ per $
+function calc(kR, kU, sR, sU, rate) {
+  const rWins = { dR: sR * (kR - 1), dU: -sU };
+  const uWins = { dR: -sR, dU: sU * (kU - 1) };
+  rWins.tot = rWins.dR + rWins.dU * rate;
+  uWins.tot = uWins.dR + uWins.dU * rate;
+  const inv = 1 / kR + 1 / kU;
+  return { rWins, uWins, pR: (1 / kR) / inv };
+}
+
+let mode = 'r2u', last = 'sR';
+try { const s = JSON.parse(localStorage.getItem('vilka') || '{}');
+  if (s.rate) $('rate').value = s.rate; if (s.mode) mode = s.mode;
+  if (s.stR) $('stR').value = s.stR; if (s.stU) $('stU').value = s.stU; } catch (e) {}
+
+// Any script error shows up on the page instead of a silently dead calculator
+function render() { try { draw(); } catch (e) { $('out').innerHTML = '<p class="err">Ошибка: ' + e.message + '</p>'; } }
+function draw() {
+  try { localStorage.setItem('vilka', JSON.stringify({ rate: $('rate').value, mode, stR: $('stR').value, stU: $('stU').value })); } catch (e) {}
+  document.querySelectorAll('#mode button').forEach(b => b.setAttribute('aria-pressed', b.dataset.m === mode));
+
+  const rate = num('rate'), kR = num('kR'), kU = num('kU');
+  if (!(rate > 0 && kR > 1 && kU > 1)) { $('out').innerHTML = '<p class="err">Впиши курс и коэффициенты (больше 1).</p>'; return; }
+
+  // The stake you typed stays as is; the other one is computed and rounded
+  let sR, sU;
+  if (last === 'sR') { sR = num('sR') || 0; sU = roundTo(sR * kR / (kU * rate), +$('stU').value); $('sU').value = String(+sU.toFixed(2)); }
+  else { sU = num('sU') || 0; sR = roundTo(sU * kU * rate / kR, +$('stR').value); $('sR').value = String(sR); }
+  $('aR').textContent = last === 'sU' ? 'посчитано' : '';
+  $('aU').textContent = last === 'sR' ? 'посчитано' : '';
+
+  const c = calc(kR, kU, sR, sU, rate);
+  const k2 = x => x.toFixed(2).replace('.', ',');
+
+  // r2u: money moves ₽→$ when the ₽ bet loses, i.e. the $ bet wins
+  const wantU = mode === 'r2u', wantR = mode === 'u2r';
+
+  // Transfer fee = loss in the "moved" scenario, as % of the stake that left the source book
+  let verdict;
+  if (mode === 'arb') {
+    const worst = Math.min(c.rWins.tot, c.uWins.tot);
+    verdict = `<span>${worst >= 0 ? 'Это вилка, плюс при любом исходе' : 'Минус при любом исходе'}</span><b class="${cls(worst)}">${sign(worst)} ₽</b>`;
+  } else {
+    const moved = wantU ? sR : sU * rate;
+    const cost = -(wantU ? c.uWins.tot : c.rWins.tot);
+    const movedTxt = wantU ? fmt(sR) + ' ₽' : fmt(sU, 2) + ' $';
+    verdict = !(moved > 0) ? '<span>Впиши ставку</span>'
+      : cost <= 0 ? `<span>Перевод ${movedTxt} ещё и в плюс</span><b class="pos">${sign(-cost)} ₽</b>`
+      : `<span>Комиссия за перевод ${movedTxt}: <strong>${fmt(cost)} ₽</strong></span><b class="neg">${k2(cost / moved * 100)}%</b>`;
+  }
+  const scen = (title, s, p, want, other, moveTxt) => `
+    <section class="scen ${want ? 'want' : other ? 'back' : ''}">
+      <h3><span>${title}</span><span class="tag">${moveTxt} · шанс ≈ ${Math.round(p * 100)}%</span></h3>
+      <div class="rows">
+        <span>Рублёвая контора</span><span class="${cls(s.dR)}">${sign(s.dR)} ₽</span>
+        <span>Долларовая контора</span><span class="${cls(s.dU)}">${sign(s.dU, 2)} $</span>
+        <span class="tot">Итого в рублях</span><span class="tot ${cls(s.tot)}">${sign(s.tot)} ₽</span>
+      </div>
+    </section>`;
+
+  let hint = '';
+  if (mode !== 'arb') {
+    const pWant = wantU ? 1 - c.pR : c.pR;
+    const bigSide = wantU ? 'рублёвой' : 'долларовой';
+    hint = `<p class="hint">Деньги переедут, если <strong>проиграет ставка в ${bigSide} конторе</strong>. Сейчас шанс на это ≈ ${Math.round(pWant * 100)}%.
+      ${pWant < 0.5 ? `Чтобы переезжало чаще, в ${bigSide} конторе ставь на исход с <strong>большим</strong> коэффициентом (андердога).` : 'Расклад удачный: в нужной конторе ставка на менее вероятный исход.'}
+      Если зайдёт не та сторона, деньги просто сдвинутся в обратную сторону, пробуй ещё раз.</p>`;
+  }
+
+  // Fee f = ks·(1/ks + 1/kd − 1), ks = odds where money leaves, kd = odds where it arrives.
+  // Solved for each side: kd = ks/(ks − 1 + f), ks = (1 − f)·kd/(kd − 1)
+  const [ks, kd, sName, dName] = wantR ? [kU, kR, 'Долларовая', 'рублёвой'] : [kR, kU, 'Рублёвая', 'долларовой'];
+  const fees = mode === 'arb' ? [0] : [0, 0.02, 0.03, 0.05];
+  const needRow = f => fees.map(L => {
+    const x = f(L);
+    return `<span>${L ? `комиссия до ${L * 100}%` : 'в ноль'}</span><span>${x > 1 ? 'от ' + k2(Math.ceil(x * 100) / 100) : '—'}</span>`;
+  }).join('');
+  const sNameTo = sName === 'Рублёвая' ? 'рублёвой' : 'долларовой', dNameCap = dName === 'рублёвой' ? 'Рублёвая' : 'Долларовая';
+  const guide = `<section class="scen">
+      <h3><span>Какие кэфы искать</span></h3>
+      <div class="rows">
+        <span class="lbl">${sName} ${k2(ks)} → в ${dName} нужен</span><span></span>
+        ${needRow(L => ks / (ks - 1 + L))}
+        <span class="lbl" style="padding-top:6px">${dNameCap} ${k2(kd)} → в ${sNameTo} нужен</span><span></span>
+        ${needRow(L => (1 - L) * kd / (kd - 1))}
+      </div>
+      <p class="hint">Правило: чем больше оба кэфа, тем меньше потеря. Пары «в ноль» для ориентира: 1,50 и 3,00 · 1,80 и 2,25 · 2,00 и 2,00. Ищи матчи, где на один исход в одной конторе кэф завышен, а на противоположный в другой тоже.</p>
+    </section>`;
+
+  $('out').innerHTML = `<div style="display:grid;gap:12px">
+    <div class="verdict">${verdict}</div>
+    ${scen('Зашла ставка в рублёвой', c.rWins, c.pR, wantR, wantU, wantR ? '$ → ₽ переехали' : wantU ? 'деньги ушли не туда' : 'исход 1')}
+    ${scen('Зашла ставка в долларовой', c.uWins, 1 - c.pR, wantU, wantR, wantU ? '₽ → $ переехали' : wantR ? 'деньги ушли не туда' : 'исход 2')}
+    ${hint}
+    ${guide}</div>`;
+}
+
+['rate', 'kR', 'kU'].forEach(id => $(id).addEventListener('input', render));
+['stR', 'stU'].forEach(id => $(id).addEventListener('change', render));
+$('sR').addEventListener('input', () => { last = 'sR'; render(); });
+$('sU').addEventListener('input', () => { last = 'sU'; render(); });
+$('mode').addEventListener('click', e => { const m = e.target.dataset.m; if (m) { mode = m; render(); } });
+document.querySelectorAll('input').forEach(i => i.addEventListener('focus', () => i.select()));
+render();
+</script>
